@@ -6,15 +6,17 @@ This Node.js project uses Puppeteer to automate Google Maps searches, scroll thr
 - Prompts for a search keyword
 - Scrolls all business results in Google Maps
 - Visits each business and extracts:
-  - Name
-  - Rating
-  - Reviews
-  - Category
+  - Business Name
   - Address
-  - Phone
-  - Website
-  - Plus code
-- Outputs all data to `results.csv`
+  - City
+  - State
+  - ZIP
+  - Phone Number
+  - Email (only if visible on the Google listing)
+  - Website URL (if available)
+  - Google Maps URL (source reference)
+- Outputs all data to `results.csv` (Excel compatible)
+- **Does NOT visit business websites to extract emails** (emails are only scraped if visible on the Google Maps listing itself)
 
 ## Setup
 1. **Install dependencies:**
@@ -34,6 +36,16 @@ This Node.js project uses Puppeteer to automate Google Maps searches, scroll thr
 ## Output
 - The script will create a `results.csv` file in the project directory with all extracted business data.
 - The browser will remain open after extraction for manual inspection.
+- The CSV fields are:
+  - Business Name
+  - Address
+  - City
+  - State
+  - ZIP
+  - Phone Number
+  - Email (from Google listing only)
+  - Website URL
+  - Google Maps URL
 
 ## Requirements
 - Node.js 18+

@@ -59,7 +59,13 @@ const fs = require('fs');
     const businessLinks = await page.$$eval('div[role="feed"] a.hfpxzc', links => links.map(a => a.href));
     console.log(`Found ${businessLinks.length} business links.`);
 
-    const results = [];
+    // Prepare CSV file
+    const csvFile = 'results.csv';
+    const csvHeader = 'Business Name,Address,City,State,ZIP,Phone Number,Email,Website URL,Google Maps URL\n';
+    if (!fs.existsSync(csvFile)) {
+      fs.writeFileSync(csvFile, csvHeader, 'utf8');
+    }
+
     for (let i = 0; i < businessLinks.length; i++) {
       const link = businessLinks[i];
       console.log(`Processing business ${i + 1}/${businessLinks.length}: ${link}`);
@@ -71,37 +77,39 @@ const fs = require('fs');
           const el = document.querySelector(selector);
           return el ? el.textContent.trim() : '';
         };
-        const getAttr = (selector, attr) => {
-          const el = document.querySelector(selector);
-          return el ? el.getAttribute(attr) : '';
-        };
         // Name
         const name = getText('h1.DUwDvf');
-        // Rating
-        const rating = getText('span[aria-hidden="true"]');
-        // Reviews
-        const reviews = getText('span[aria-label*="reviews"]');
-        // Category
-        const category = getText('button.DkEaL');
         // Address
         const address = getText('button[data-item-id="address"] .Io6YTe');
         // Phone
         const phone = getText('button[data-item-id^="phone"] .Io6YTe');
         // Website
         const website = getText('a[data-item-id="authority"] .Io6YTe');
-        // Plus code
-        const plusCode = getText('button[data-item-id="oloc"] .Io6YTe');
-        return { name, rating, reviews, category, address, phone, website, plusCode };
+        // Email (only from Google listing)
+        let email = '';
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const pageText = document.body.innerText;
+        const found = pageText.match(emailRegex);
+        if (found && found.length > 0) email = found[0];
+        return { name, address, phone, website, email };
       });
-      results.push(data);
+      // Parse address into City, State, ZIP
+      let city = '', state = '', zip = '';
+      if (data.address) {
+        // Try to match: City, State ZIP
+        const match = data.address.match(/,\s*([^,]+),\s*([A-Z]{2})\s*(\d{5})/);
+        if (match) {
+          city = match[1].trim();
+          state = match[2].trim();
+          zip = match[3].trim();
+        }
+      }
+      // Append to CSV immediately, including the link
+      const csvRow = [data.name, data.address, city, state, zip, data.phone, data.email, data.website, link].map(v => '"' + (v || '') + '"').join(',') + '\n';
+      fs.appendFileSync(csvFile, csvRow, 'utf8');
+      console.log(`Appended business ${i + 1} to CSV.`);
     }
-
-    // Write to CSV
-    console.log('Writing results to CSV...');
-    const csvHeader = 'Name,Rating,Reviews,Category,Address,Phone,Website,PlusCode\n';
-    const csvRows = results.map(r => [r.name, r.rating, r.reviews, r.category, r.address, r.phone, r.website, r.plusCode].map(v => '"' + (v || '') + '"').join(','));
-    fs.writeFileSync('results.csv', csvHeader + csvRows.join('\n'), 'utf8');
-    console.log('CSV file written as results.csv');
+    console.log('All businesses processed. CSV file is up to date.');
     // Browser will remain open for user inspection
   } catch (err) {
     console.error('Error:', err);
